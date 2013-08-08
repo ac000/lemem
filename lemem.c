@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
 	const char *sprog;
 
 	if (argc < 3) {
-		printf("Usage: lemem <memory limit> <program> [args ...]\n");
+		printf("Usage: lemem <memory limit in MB> <program> [args ...]"
+				"\n");
 		exit(EXIT_FAILURE);
 	}
 

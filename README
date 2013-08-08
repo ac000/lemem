@@ -3,7 +3,7 @@ use, using Linux's cgroups memory controller.
 
 Usage is as simple as
 
-    $ lemem <memory limit> <program> [args ...]
+    $ lemem <memory limit in MB> <program> [args ...]
 
 
 It should be installed setuid root (4755) woth owner:group root. It will drop
