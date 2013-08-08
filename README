@@ -1,0 +1,13 @@
+A simple utility to run a program while limiting the amount of memory it can
+use, using Linux's cgroups memory controller.
+
+Usage is as simple as
+
+    $ lemem <memory limit> <program> [args ...]
+
+
+It should be installed setuid root (4755) woth owner:group root. It will drop
+back to the users Real GID/UID before executing the specified program.
+
+It is licensed under the GNU General Public License Version 2, see the COPYING
+file.
