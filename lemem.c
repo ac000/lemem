@@ -24,7 +24,6 @@ int main(int argc, char *argv[])
 {
 	int msize;
 	int ret;
-	int status;
 	pid_t pid;
 	char cgpath[PATH_MAX];
 	const char *prog;
@@ -50,6 +49,8 @@ int main(int argc, char *argv[])
 	pid = fork();
 	if (pid > 0) {
 		/* Parent */
+		int status;
+
 		wait(&status);
 		rmdir(cgpath);
 	} else if (pid == 0) {
