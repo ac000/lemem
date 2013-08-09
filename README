@@ -1,5 +1,5 @@
 A simple utility to run a program while limiting the amount of memory it can
-use, using Linux's cgroups memory controller.
+use, using Linux's cgroups memory controller (CONFIG_MEMCG).
 
 Usage is as simple as
 
