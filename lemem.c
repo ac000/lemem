@@ -16,14 +16,37 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 #include <linux/limits.h>
 
 #define MEM_CGROUP_MNT_PT	"/sys/fs/cgroup/memory"
 
+static volatile sig_atomic_t child_reaped;
+static pid_t child_pid;
+
+/*
+ * Upon receiving an INT or TERM signal, terminate the child.
+ */
+static void terminate(int signo)
+{
+	kill(child_pid, SIGTERM);
+}
+
+/*
+ * Upon receiving a SIGCHLD, reap the childs pid and set the child_reaped
+ * flag.
+ */
+static void reaper(int signo)
+{
+	int status;
+
+	waitpid(child_pid, &status, WNOHANG);
+	child_reaped = 1;
+}
+
 int main(int argc, char *argv[])
 {
 	int msize;
-	int status;
 	int ret;
 	pid_t pid;
 	char cgpath[PATH_MAX];
@@ -31,6 +54,7 @@ int main(int argc, char *argv[])
 	const char *prog;
 	const char *sprog;
 	FILE *fp;
+	struct sigaction sa;
 
 	if (argc < 3) {
 		printf("Usage: lemem <memory limit in MB> <program> [args ...]"
@@ -48,6 +72,26 @@ int main(int argc, char *argv[])
 		perror("mkdir");
 		exit(EXIT_FAILURE);
 	}
+
+	/* Setup a signal handler for SIGINT && SIGTERM */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = terminate;
+	sa.sa_flags = 0;
+	sigaction(SIGINT, &sa, NULL);
+
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = terminate;
+	sa.sa_flags = 0;
+	sigaction(SIGTERM, &sa, NULL);
+
+	/*
+	 * Setup a signal handler for SIGCHLD to handle child
+	 * process terminations.
+	 */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = reaper;
+	sa.sa_flags = 0;
+	sigaction(SIGCHLD, &sa, NULL);
 
 	pid = fork();
 	if (pid == 0) { /* Child */
@@ -80,15 +124,22 @@ int main(int argc, char *argv[])
 
 		execvp(prog, argv + 2);
 	}
+	child_pid = pid;
 
-	wait(&status);
-	/* Clear the cgroups memory usage */
-	snprintf(fpath, PATH_MAX, "%s/%s/memory.force_empty",
-			MEM_CGROUP_MNT_PT, sprog);
-	fp = fopen(fpath, "w");
-	fprintf(fp, "0\n");
-	fclose(fp);
-	rmdir(cgpath);
+	for (;;) {
+		pause();
+		if (child_reaped) {
+			/* Clear the cgroups memory usage */
+			snprintf(fpath, PATH_MAX, "%s/%s/memory.force_empty",
+					MEM_CGROUP_MNT_PT, sprog);
+			fp = fopen(fpath, "w");
+			fprintf(fp, "0\n");
+			fclose(fp);
+			rmdir(cgpath);
+
+			break;
+		}
+	}
 
 	exit(EXIT_SUCCESS);
 }
