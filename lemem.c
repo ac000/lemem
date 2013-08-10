@@ -24,6 +24,19 @@
 static volatile sig_atomic_t child_reaped;
 static pid_t child_pid;
 
+static void cleanup(const char *cgrp_path)
+{
+	FILE *fp;
+	char fpath[PATH_MAX];
+
+	/* Clear the cgroups memory usage */
+	snprintf(fpath, PATH_MAX, "%s/memory.force_empty", cgrp_path);
+	fp = fopen(fpath, "w");
+	fprintf(fp, "0\n");
+	fclose(fp);
+	rmdir(cgrp_path);
+}
+
 /*
  * Upon receiving an INT or TERM signal, terminate the child.
  */
@@ -50,7 +63,6 @@ int main(int argc, char *argv[])
 	int ret;
 	pid_t pid;
 	char cgpath[PATH_MAX];
-	char fpath[PATH_MAX];
 	const char *prog;
 	const char *sprog;
 	FILE *fp;
@@ -95,6 +107,8 @@ int main(int argc, char *argv[])
 
 	pid = fork();
 	if (pid == 0) { /* Child */
+		char fpath[PATH_MAX];
+
 		/* Place the child's pid into its tasks file */
 		snprintf(fpath, PATH_MAX, "%s/%s/tasks", MEM_CGROUP_MNT_PT,
 				sprog);
@@ -129,14 +143,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		pause();
 		if (child_reaped) {
-			/* Clear the cgroups memory usage */
-			snprintf(fpath, PATH_MAX, "%s/%s/memory.force_empty",
-					MEM_CGROUP_MNT_PT, sprog);
-			fp = fopen(fpath, "w");
-			fprintf(fp, "0\n");
-			fclose(fp);
-			rmdir(cgpath);
-
+			cleanup(cgpath);
 			break;
 		}
 	}
