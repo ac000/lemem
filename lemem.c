@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	sa.sa_flags = 0;
 	sigaction(SIGCHLD, &sa, NULL);
 
-	pid = fork();
+	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
 		char fpath[PATH_MAX];
 
@@ -140,7 +140,6 @@ int main(int argc, char *argv[])
 			_exit(EXIT_FAILURE);
 		}
 	}
-	child_pid = pid;
 
 	for (;;) {
 		pause();
