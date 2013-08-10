@@ -110,15 +110,13 @@ int main(int argc, char *argv[])
 		char fpath[PATH_MAX];
 
 		/* Place the child's pid into its tasks file */
-		snprintf(fpath, PATH_MAX, "%s/%s/tasks", MEM_CGROUP_MNT_PT,
-				sprog);
+		snprintf(fpath, PATH_MAX, "%s/tasks", cgpath);
 		fp = fopen(fpath, "a");
 		fprintf(fp, "%d\n", getpid());
 		fclose(fp);
 
 		/* Set the requested memory limit (in bytes) */
-		snprintf(fpath, PATH_MAX, "%s/%s/memory.limit_in_bytes",
-				MEM_CGROUP_MNT_PT, sprog);
+		snprintf(fpath, PATH_MAX, "%s/memory.limit_in_bytes", cgpath);
 		fp = fopen(fpath, "w");
 		fprintf(fp, "%lu\n", (unsigned long)msize * 1024*1024);
 		fclose(fp);
