@@ -26,8 +26,10 @@ int main(int argc, char *argv[])
 	int ret;
 	pid_t pid;
 	char cgpath[PATH_MAX];
+	char fpath[PATH_MAX];
 	const char *prog;
 	const char *sprog;
+	FILE *fp;
 
 	if (argc < 3) {
 		printf("Usage: lemem <memory limit in MB> <program> [args ...]"
@@ -52,12 +54,15 @@ int main(int argc, char *argv[])
 		int status;
 
 		wait(&status);
+		/* Clear the cgroups memory usage */
+		snprintf(fpath, PATH_MAX, "%s/%s/memory.force_empty",
+				MEM_CGROUP_MNT_PT, sprog);
+		fp = fopen(fpath, "w");
+		fprintf(fp, "0\n");
+		fclose(fp);
 		rmdir(cgpath);
 	} else if (pid == 0) {
 		/* Child */
-		FILE *fp;
-		char fpath[PATH_MAX];
-
 		/* Place the child's pid into its tasks file */
 		snprintf(fpath, PATH_MAX, "%s/%s/tasks", MEM_CGROUP_MNT_PT,
 				sprog);
