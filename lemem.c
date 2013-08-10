@@ -136,7 +136,11 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		execvp(prog, argv + 2);
+		ret = execvp(prog, argv + 2);
+		if (ret == -1) {
+			perror("execvp");
+			_exit(EXIT_FAILURE);
+		}
 	}
 	child_pid = pid;
 
