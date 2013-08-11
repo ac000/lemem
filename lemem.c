@@ -64,7 +64,6 @@ int main(int argc, char *argv[])
 	pid_t pid;
 	char cgpath[PATH_MAX];
 	const char *prog;
-	const char *sprog;
 	FILE *fp;
 	struct sigaction sa;
 
@@ -76,14 +75,6 @@ int main(int argc, char *argv[])
 
 	msize = atoi(argv[1]);
 	prog = argv[2];
-	sprog = basename(prog);
-
-	snprintf(cgpath, PATH_MAX, "%s/%s", MEM_CGROUP_MNT_PT, sprog);
-	ret = mkdir(cgpath, 0777);
-	if (ret != 0) {
-		perror("mkdir");
-		exit(EXIT_FAILURE);
-	}
 
 	/* Setup a signal handler for SIGINT && SIGTERM */
 	sigemptyset(&sa.sa_mask);
@@ -108,6 +99,14 @@ int main(int argc, char *argv[])
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
 		char fpath[PATH_MAX];
+
+		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
+				basename(prog), getpid());
+		ret = mkdir(cgpath, 0777);
+		if (ret != 0) {
+			perror("mkdir");
+			exit(EXIT_FAILURE);
+		}
 
 		/* Place the child's pid into its tasks file */
 		snprintf(fpath, PATH_MAX, "%s/tasks", cgpath);
@@ -139,6 +138,14 @@ int main(int argc, char *argv[])
 			perror("execvp");
 			_exit(EXIT_FAILURE);
 		}
+	} else if (pid > 0) {
+		/*
+		 * We also need to set the path for the child processes
+		 * cgroup in the parent process as that is where the
+		 * directory will be removed from.
+		 */
+		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
+				basename(prog), child_pid);
 	}
 
 	for (;;) {
