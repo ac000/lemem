@@ -99,9 +99,10 @@ int main(int argc, char *argv[])
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
 		char fpath[PATH_MAX];
+		pid_t cpid = getpid();
 
 		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
-				basename(prog), getpid());
+				basename(prog), cpid);
 		ret = mkdir(cgpath, 0777);
 		if (ret != 0) {
 			perror("mkdir");
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 		/* Place the child's pid into its tasks file */
 		snprintf(fpath, PATH_MAX, "%s/tasks", cgpath);
 		fp = fopen(fpath, "a");
-		fprintf(fp, "%d\n", getpid());
+		fprintf(fp, "%d\n", cpid);
 		fclose(fp);
 
 		/* Set the requested memory limit (in bytes) */
