@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 		ret = mkdir(cgpath, 0777);
 		if (ret != 0) {
 			perror("mkdir");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		/* Place the child's pid into its tasks file */
@@ -125,13 +125,13 @@ int main(int argc, char *argv[])
 		ret = setgid(getgid());
 		if (ret != 0) {
 			perror("setgid");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 		/* Set back to the users Real UID */
 		ret = setuid(getuid());
 		if (ret != 0) {
 			perror("setuid");
-			exit(EXIT_FAILURE);
+			_exit(EXIT_FAILURE);
 		}
 
 		ret = execvp(prog, argv + 2);
