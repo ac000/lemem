@@ -81,10 +81,6 @@ int main(int argc, char *argv[])
 	sa.sa_handler = terminate;
 	sa.sa_flags = 0;
 	sigaction(SIGINT, &sa, NULL);
-
-	sigemptyset(&sa.sa_mask);
-	sa.sa_handler = terminate;
-	sa.sa_flags = 0;
 	sigaction(SIGTERM, &sa, NULL);
 
 	/*
