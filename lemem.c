@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 	msize = atoi(argv[1]);
 	prog = argv[2];
 
-	/* Setup a signal handler for SIGINT && SIGTERM */
+	/* Setup a signal handler for SIGINT & SIGTERM */
 	sigemptyset(&sa.sa_mask);
 	sa.sa_handler = terminate;
 	sa.sa_flags = 0;
