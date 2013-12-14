@@ -6,7 +6,7 @@ Usage is as simple as
     $ lemem <memory limit in MB> <program> [args ...]
 
 
-It should be installed setuid root (4755) woth owner:group root. It will drop
+It should be installed setuid root (4755) with owner:group root. It will drop
 back to the users Real GID/UID before executing the specified program.
 
 It is licensed under the GNU General Public License Version 2, see the COPYING
