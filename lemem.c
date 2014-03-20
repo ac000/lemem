@@ -1,7 +1,7 @@
 /*
  * lemem.c - Utility to run a program while limiting its memory usage
  *
- * Copyright (C) 2013		Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (C) 2013 -  2014	Andrew Clayton <andrew@digital-domain.net>
  *
  * Licensed under the GNU General Public License Version 2
  * See COPYING
@@ -60,11 +60,9 @@ static void reaper(int signo)
 int main(int argc, char *argv[])
 {
 	int msize;
-	int ret;
 	pid_t pid;
 	char cgpath[PATH_MAX];
 	const char *prog;
-	FILE *fp;
 	struct sigaction sa;
 
 	if (argc < 3) {
@@ -94,8 +92,10 @@ int main(int argc, char *argv[])
 
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
+		int ret;
 		char fpath[PATH_MAX];
 		pid_t cpid = getpid();
+		FILE *fp;
 
 		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
 				basename(prog), cpid);
