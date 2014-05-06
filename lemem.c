@@ -92,15 +92,15 @@ int main(int argc, char *argv[])
 
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
-		int ret;
+		int err;
 		char fpath[PATH_MAX];
 		pid_t cpid = getpid();
 		FILE *fp;
 
 		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
 				basename(prog), cpid);
-		ret = mkdir(cgpath, 0777);
-		if (ret != 0) {
+		err = mkdir(cgpath, 0777);
+		if (err) {
 			perror("mkdir");
 			_exit(EXIT_FAILURE);
 		}
@@ -118,20 +118,20 @@ int main(int argc, char *argv[])
 		fclose(fp);
 
 		/* Set back to the users Real GID */
-		ret = setgid(getgid());
-		if (ret != 0) {
+		err = setgid(getgid());
+		if (err) {
 			perror("setgid");
 			goto cleanup_exit;
 		}
 		/* Set back to the users Real UID */
-		ret = setuid(getuid());
-		if (ret != 0) {
+		err = setuid(getuid());
+		if (err) {
 			perror("setuid");
 			goto cleanup_exit;
 		}
 
-		ret = execvp(prog, argv + 2);
-		if (ret == -1)
+		err = execvp(prog, argv + 2);
+		if (err)
 			perror("execvp");
 cleanup_exit:
 		cleanup(cgpath);
