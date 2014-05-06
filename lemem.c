@@ -121,20 +121,21 @@ int main(int argc, char *argv[])
 		ret = setgid(getgid());
 		if (ret != 0) {
 			perror("setgid");
-			_exit(EXIT_FAILURE);
+			goto cleanup_exit;
 		}
 		/* Set back to the users Real UID */
 		ret = setuid(getuid());
 		if (ret != 0) {
 			perror("setuid");
-			_exit(EXIT_FAILURE);
+			goto cleanup_exit;
 		}
 
 		ret = execvp(prog, argv + 2);
-		if (ret == -1) {
+		if (ret == -1)
 			perror("execvp");
-			_exit(EXIT_FAILURE);
-		}
+cleanup_exit:
+		cleanup(cgpath);
+		_exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		/*
 		 * We also need to set the path for the child processes
