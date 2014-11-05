@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <dirent.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <signal.h>
@@ -55,6 +56,25 @@ static void reaper(int signo)
 
 	waitpid(child_pid, &status, WNOHANG);
 	child_reaped = 1;
+}
+
+/*
+ * This will close all open file descriptors above 2 (stderr)
+ * by running through the fd's in /proc/self/fd
+ */
+static void close_fds(void)
+{
+	DIR *dir;
+	struct dirent *d;
+
+	dir = opendir("/proc/self/fd");
+	while ((d = readdir(dir)) != NULL) {
+		if (atoi(d->d_name) < 3)
+			continue;
+
+		close(atoi(d->d_name));
+	}
+	closedir(dir);
 }
 
 int main(int argc, char *argv[])
@@ -134,6 +154,8 @@ int main(int argc, char *argv[])
 			perror("setuid");
 			goto cleanup_exit;
 		}
+
+		close_fds();
 
 		err = execvp(prog, argv + 2);
 		if (err)
