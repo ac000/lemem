@@ -71,6 +71,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (geteuid() != 0) {
+		printf("Needs root privileges to run. e.g setuid\n");
+		exit(EXIT_FAILURE);
+	}
+
 	msize = atoi(argv[1]);
 	prog = argv[2];
 
