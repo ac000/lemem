@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -24,6 +25,14 @@
 
 static volatile sig_atomic_t child_reaped;
 static pid_t child_pid;
+
+static void disp_usage(void)
+{
+
+	printf("Usage: lemem [-s] -m <memory limit in MB> -- "
+			"<program> [args ...]\n");
+	exit(EXIT_FAILURE);
+}
 
 static void cleanup(const char *cgrp_path)
 {
@@ -79,25 +88,35 @@ static void close_fds(void)
 
 int main(int argc, char *argv[])
 {
-	int msize;
+	int opt;
+	unsigned long msize = 0;
 	pid_t pid;
 	char cgpath[PATH_MAX];
 	const char *prog;
 	struct sigaction sa;
-
-	if (argc < 3) {
-		printf("Usage: lemem <memory limit in MB> <program> [args ...]"
-				"\n");
-		exit(EXIT_FAILURE);
-	}
+	bool limit_swap = false;
 
 	if (geteuid() != 0) {
 		printf("Needs root privileges to run. e.g setuid\n");
 		exit(EXIT_FAILURE);
 	}
 
-	msize = atoi(argv[1]);
-	prog = argv[2];
+	while ((opt = getopt(argc, argv, "hsm:")) != -1) {
+		switch (opt) {
+		case 'h':
+			disp_usage();
+		case 's':
+			limit_swap = true;
+			break;
+		case 'm':
+			msize = atoi(optarg) * 1024*1024;
+			break;
+		}
+	}
+	if (!msize)
+		disp_usage();
+
+	prog = argv[optind];
 
 	/* Setup a signal handler for SIGINT & SIGTERM */
 	sigemptyset(&sa.sa_mask);
@@ -139,7 +158,20 @@ int main(int argc, char *argv[])
 		/* Set the requested memory limit (in bytes) */
 		snprintf(fpath, PATH_MAX, "%s/memory.limit_in_bytes", cgpath);
 		fp = fopen(fpath, "w");
-		fprintf(fp, "%lu\n", (unsigned long)msize * 1024*1024);
+		fprintf(fp, "%lu\n", msize);
+		fclose(fp);
+
+		/*
+		 * Prepare to limit swap usage if -s is given.
+		 *
+		 * If so, we make the mem + swap usage the same as the
+		 * mem usage effectively meaning no swap should be used.
+		 */
+		snprintf(fpath, PATH_MAX, "%s/memory.memsw.limit_in_bytes",
+				cgpath);
+		fp = fopen(fpath, "w");
+		if (limit_swap && fp)
+			fprintf(fp, "%lu\n", msize);
 		fclose(fp);
 
 		/* Set back to the users Real GID */
@@ -157,7 +189,7 @@ int main(int argc, char *argv[])
 
 		close_fds();
 
-		err = execvp(prog, argv + 2);
+		err = execvp(prog, argv + optind);
 		if (err)
 			perror("execvp");
 cleanup_exit:
