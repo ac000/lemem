@@ -28,7 +28,6 @@ static pid_t child_pid;
 
 static void disp_usage(void)
 {
-
 	printf("Usage: lemem [-l] [-s] -m <memory limit in MB> -- "
 			"<program> [args ...]\n");
 	exit(EXIT_FAILURE);
