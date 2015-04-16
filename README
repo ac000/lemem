@@ -3,11 +3,14 @@ use, using Linux's cgroups memory controller (CONFIG_MEMCG).
 
 Usage is as simple as
 
-    $ lemem [-s] -m <memory limit in MB> -- <program> [args ...]
+    $ lemem [-l] [-s] -m <memory limit in MB> -- <program> [args ...]
 
 
 If you have CONFIG_MEMCG_SWAP you can also pass the -s option which will
 effectively disable the use of swap for the process.
+
+You can also optionally try to make lemem a process group leader via the -l
+option.
 
 It should be installed setuid root (4755) with owner:group root. It will drop
 back to the users Real GID/UID before executing the specified program.

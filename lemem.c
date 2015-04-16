@@ -1,7 +1,7 @@
 /*
  * lemem.c - Utility to run a program while limiting its memory usage
  *
- * Copyright (C) 2013 -  2014	Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (C) 2013 -  2015	Andrew Clayton <andrew@digital-domain.net>
  *
  * Licensed under the GNU General Public License Version 2
  * See COPYING
@@ -29,7 +29,7 @@ static pid_t child_pid;
 static void disp_usage(void)
 {
 
-	printf("Usage: lemem [-s] -m <memory limit in MB> -- "
+	printf("Usage: lemem [-l] [-s] -m <memory limit in MB> -- "
 			"<program> [args ...]\n");
 	exit(EXIT_FAILURE);
 }
@@ -95,16 +95,21 @@ int main(int argc, char *argv[])
 	const char *prog;
 	struct sigaction sa;
 	bool limit_swap = false;
+	bool pgl = false;
 
 	if (geteuid() != 0) {
 		printf("Needs root privileges to run. e.g setuid\n");
 		exit(EXIT_FAILURE);
 	}
 
-	while ((opt = getopt(argc, argv, "hsm:")) != -1) {
+	while ((opt = getopt(argc, argv, "hlsm:")) != -1) {
 		switch (opt) {
 		case 'h':
 			disp_usage();
+		case 'l':
+			/* Try to become process group leader */
+			pgl = true;
+			break;
 		case 's':
 			limit_swap = true;
 			break;
@@ -117,6 +122,12 @@ int main(int argc, char *argv[])
 		disp_usage();
 
 	prog = argv[optind];
+
+	if (pgl) {
+		/* Check if we not are already a process group leader */
+		if (getpid() != getpgid(0))
+			setsid();
+	}
 
 	/* Setup a signal handler for SIGINT & SIGTERM */
 	sigemptyset(&sa.sa_mask);
