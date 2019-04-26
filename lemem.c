@@ -147,12 +147,13 @@ int main(int argc, char *argv[])
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
 		int err;
+		int len;
 		char fpath[PATH_MAX];
 		pid_t cpid = getpid();
 		FILE *fp;
 
-		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
-				basename(prog), cpid);
+		len = snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
+			       basename(prog), cpid);
 		err = mkdir(cgpath, 0777);
 		if (err) {
 			perror("mkdir");
@@ -160,13 +161,14 @@ int main(int argc, char *argv[])
 		}
 
 		/* Place the child's pid into its tasks file */
-		snprintf(fpath, PATH_MAX, "%s/tasks", cgpath);
+		snprintf(fpath, PATH_MAX - len, "%s/tasks", cgpath);
 		fp = fopen(fpath, "a");
 		fprintf(fp, "%d\n", cpid);
 		fclose(fp);
 
 		/* Set the requested memory limit (in bytes) */
-		snprintf(fpath, PATH_MAX, "%s/memory.limit_in_bytes", cgpath);
+		snprintf(fpath, PATH_MAX - len, "%s/memory.limit_in_bytes",
+			 cgpath);
 		fp = fopen(fpath, "w");
 		fprintf(fp, "%lu\n", msize);
 		fclose(fp);
@@ -177,8 +179,8 @@ int main(int argc, char *argv[])
 		 * If so, we make the mem + swap usage the same as the
 		 * mem usage effectively meaning no swap should be used.
 		 */
-		snprintf(fpath, PATH_MAX, "%s/memory.memsw.limit_in_bytes",
-				cgpath);
+		snprintf(fpath, PATH_MAX - len,
+			 "%s/memory.memsw.limit_in_bytes", cgpath);
 		fp = fopen(fpath, "w");
 		if (limit_swap && fp)
 			fprintf(fp, "%lu\n", msize);
