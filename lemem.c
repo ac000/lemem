@@ -49,7 +49,7 @@ static void cleanup(const char *cgrp_path)
 /*
  * Upon receiving an INT or TERM signal, terminate the child.
  */
-static void terminate(int signo)
+static void terminate(int signo __attribute__((unused)))
 {
 	kill(child_pid, SIGTERM);
 }
@@ -58,7 +58,7 @@ static void terminate(int signo)
  * Upon receiving a SIGCHLD, reap the childs pid and set the child_reaped
  * flag.
  */
-static void reaper(int signo)
+static void reaper(int signo __attribute__((unused)))
 {
 	int status;
 
