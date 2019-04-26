@@ -105,6 +105,7 @@ int main(int argc, char *argv[])
 		switch (opt) {
 		case 'h':
 			disp_usage();
+			break;
 		case 'l':
 			/* Try to become process group leader */
 			pgl = true;
