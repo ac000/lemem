@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -g -std=c99 -O2
+CFLAGS=-Wall -Wextra -g -std=c99 -O2
 LDFLAGS=
 
 lemem: lemem.c
