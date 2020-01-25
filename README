@@ -1,13 +1,14 @@
 A simple utility to run a program while limiting the amount of memory it can
-use, using Linux's cgroups memory controller (CONFIG_MEMCG).
+use using Linux's cgroups memory controller (CONFIG_MEMCG).
 
 Usage is as simple as
 
-    $ lemem [-l] [-s] -m <memory limit in MB> -- <program> [args ...]
+    $ lemem [-l] [-s] -m <memory limit in MiB> -- <program> [args ...]
 
+-m is for specifying the memory Limit in MiB. A softer limit is set at 95%
+of the specified limit.
 
-If you have CONFIG_MEMCG_SWAP you can also pass the -s option which will
-effectively disable the use of swap for the process.
+-s can optionally be passed to disable the use of swap for the process.
 
 You can also optionally try to make lemem a process group leader via the -l
 option.
@@ -17,3 +18,6 @@ back to the users Real GID/UID before executing the specified program.
 
 It is licensed under the GNU General Public License Version 2, see the COPYING
 file.
+
+NOTE: This is for cgroups V2. If you want a version that works with V1,
+      checkout the 'cgroup_v1' tag.

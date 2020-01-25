@@ -1,7 +1,8 @@
 /*
  * lemem.c - Utility to run a program while limiting its memory usage
  *
- * Copyright (C) 2013 -  2015	Andrew Clayton <andrew@digital-domain.net>
+ * Copyright (C) 2013 -  2015, 2020	Andrew Clayton
+ *					<andrew@digital-domain.net>
  *
  * Licensed under the GNU General Public License Version 2
  * See COPYING
@@ -21,29 +22,17 @@
 #include <signal.h>
 #include <linux/limits.h>
 
-#define MEM_CGROUP_MNT_PT	"/sys/fs/cgroup/memory"
+#define LEMEM_CGROUP_MNT_PT	"/sys/fs/cgroup/user.slice/user-%d.slice"
 
 static volatile sig_atomic_t child_reaped;
 static pid_t child_pid;
+static uid_t uid;
 
 static void disp_usage(void)
 {
-	printf("Usage: lemem [-l] [-s] -m <memory limit in MB> -- "
-			"<program> [args ...]\n");
+	printf("Usage: lemem [-l] [-s] -m <memory limit in MiB> -- "
+	       "<program> [args ...]\n");
 	exit(EXIT_FAILURE);
-}
-
-static void cleanup(const char *cgrp_path)
-{
-	FILE *fp;
-	char fpath[PATH_MAX];
-
-	/* Clear the cgroups memory usage */
-	snprintf(fpath, PATH_MAX, "%s/memory.force_empty", cgrp_path);
-	fp = fopen(fpath, "w");
-	fprintf(fp, "0\n");
-	fclose(fp);
-	rmdir(cgrp_path);
 }
 
 /*
@@ -93,7 +82,7 @@ int main(int argc, char *argv[])
 	char cgpath[PATH_MAX];
 	const char *prog;
 	struct sigaction sa;
-	bool limit_swap = false;
+	bool disable_swap = false;
 	bool pgl = false;
 
 	if (geteuid() != 0) {
@@ -111,7 +100,7 @@ int main(int argc, char *argv[])
 			pgl = true;
 			break;
 		case 's':
-			limit_swap = true;
+			disable_swap = true;
 			break;
 		case 'm':
 			msize = atoi(optarg) * 1024*1024;
@@ -145,6 +134,7 @@ int main(int argc, char *argv[])
 	sa.sa_flags = 0;
 	sigaction(SIGCHLD, &sa, NULL);
 
+	uid = getuid();
 	pid = child_pid = fork();
 	if (pid == 0) { /* Child */
 		int err;
@@ -153,39 +143,47 @@ int main(int argc, char *argv[])
 		pid_t cpid = getpid();
 		FILE *fp;
 
-		len = snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
-			       basename(prog), cpid);
+		len = snprintf(cgpath, PATH_MAX, LEMEM_CGROUP_MNT_PT "/%s-%d",
+			       uid, basename(prog), cpid);
 		err = mkdir(cgpath, 0777);
 		if (err) {
 			perror("mkdir");
 			_exit(EXIT_FAILURE);
 		}
 
-		/* Place the child's pid into its tasks file */
-		snprintf(fpath, PATH_MAX - len, "%s/tasks", cgpath);
+		/* Place the child's pid into its cgroup.procs file */
+		snprintf(fpath, PATH_MAX - len, "%s/cgroup.procs", cgpath);
 		fp = fopen(fpath, "a");
 		fprintf(fp, "%d\n", cpid);
 		fclose(fp);
 
 		/* Set the requested memory limit (in bytes) */
-		snprintf(fpath, PATH_MAX - len, "%s/memory.limit_in_bytes",
+		snprintf(fpath, PATH_MAX - len, "%s/memory.max",
 			 cgpath);
 		fp = fopen(fpath, "w");
 		fprintf(fp, "%lu\n", msize);
 		fclose(fp);
 
-		/*
-		 * Prepare to limit swap usage if -s is given.
-		 *
-		 * If so, we make the mem + swap usage the same as the
-		 * mem usage effectively meaning no swap should be used.
-		 */
-		snprintf(fpath, PATH_MAX - len,
-			 "%s/memory.memsw.limit_in_bytes", cgpath);
+		snprintf(fpath, PATH_MAX - len, "%s/memory.high",
+			 cgpath);
 		fp = fopen(fpath, "w");
-		if (limit_swap && fp)
-			fprintf(fp, "%lu\n", msize);
+		/*
+		 * Set the high watermark to 95% of the max limit. If
+		 * this limit is hit, the process won't be killed but
+		 * allocations will be throttled and it will be put under
+		 * heavy reclaim pressure.
+		 */
+		msize *= 0.95;
+		fprintf(fp, "%lu\n", msize);
 		fclose(fp);
+
+		if (disable_swap) {
+			snprintf(fpath, PATH_MAX - len, "%s/memory.swap.max",
+				 cgpath);
+			fp = fopen(fpath, "w");
+			fprintf(fp, "%d\n", 0);
+			fclose(fp);
+		}
 
 		/* Set back to the users Real GID */
 		err = setgid(getgid());
@@ -194,7 +192,7 @@ int main(int argc, char *argv[])
 			goto cleanup_exit;
 		}
 		/* Set back to the users Real UID */
-		err = setuid(getuid());
+		err = setuid(uid);
 		if (err) {
 			perror("setuid");
 			goto cleanup_exit;
@@ -205,8 +203,9 @@ int main(int argc, char *argv[])
 		err = execvp(prog, argv + optind);
 		if (err)
 			perror("execvp");
+
 cleanup_exit:
-		cleanup(cgpath);
+		rmdir(cgpath);
 		_exit(EXIT_FAILURE);
 	} else if (pid > 0) {
 		/*
@@ -214,16 +213,17 @@ cleanup_exit:
 		 * cgroup in the parent process as that is where the
 		 * directory will be removed from.
 		 */
-		snprintf(cgpath, PATH_MAX, "%s/%s-%d", MEM_CGROUP_MNT_PT,
-				basename(prog), child_pid);
+		snprintf(cgpath, PATH_MAX, LEMEM_CGROUP_MNT_PT "/%s-%d",
+			 uid, basename(prog), child_pid);
 	}
 
 	for (;;) {
 		pause();
-		if (child_reaped) {
-			cleanup(cgpath);
-			break;
-		}
+
+		if (child_reaped)
+			rmdir(cgpath);
+
+		break;
 	}
 
 	exit(EXIT_SUCCESS);
