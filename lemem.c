@@ -1,8 +1,8 @@
 /*
  * lemem.c - Utility to run a program while limiting its memory usage
  *
- * Copyright (C) 2013 -  2015, 2020	Andrew Clayton
- *					<andrew@digital-domain.net>
+ * Copyright (C) 2013 - 2015, 2020 - 2021	Andrew Clayton
+ *						<andrew@digital-domain.net>
  *
  * Licensed under the GNU General Public License Version 2
  * See COPYING
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	int opt;
 	unsigned long msize = 0;
 	pid_t pid;
-	char cgpath[PATH_MAX];
+	char cgpath[PATH_MAX - 256];	/* allow fo extra components */
 	const char *prog;
 	struct sigaction sa;
 	bool disable_swap = false;
@@ -143,8 +143,9 @@ int main(int argc, char *argv[])
 		pid_t cpid = getpid();
 		FILE *fp;
 
-		len = snprintf(cgpath, PATH_MAX, LEMEM_CGROUP_MNT_PT "/%s-%d",
-			       uid, basename(prog), cpid);
+		len = snprintf(cgpath, sizeof(cgpath),
+			       LEMEM_CGROUP_MNT_PT "/%s-%d", uid,
+			       basename(prog), cpid);
 		err = mkdir(cgpath, 0777);
 		if (err) {
 			perror("mkdir");
@@ -213,7 +214,7 @@ cleanup_exit:
 		 * cgroup in the parent process as that is where the
 		 * directory will be removed from.
 		 */
-		snprintf(cgpath, PATH_MAX, LEMEM_CGROUP_MNT_PT "/%s-%d",
+		snprintf(cgpath, sizeof(cgpath), LEMEM_CGROUP_MNT_PT "/%s-%d",
 			 uid, basename(prog), child_pid);
 	}
 
